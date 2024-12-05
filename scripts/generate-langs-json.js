@@ -5,6 +5,13 @@ import jsYaml from "js-yaml";
 const LANGS_FILEPATH = "./src/common/languageColors.json";
 const CUSTOM_LANGS_FILEPATH = "./src/common/customLanguageColors.json";
 
+// Read custom language colors from JSON file
+const customLanguageColors = JSON.parse(
+  fs.readFileSync(CUSTOM_LANGS_FILEPATH, "utf8"),
+);
+
+const languageColors = { ...customLanguageColors };
+
 // Retrieve languages from GitHub linguist repository YAML file
 axios
   .get(
@@ -14,21 +21,11 @@ axios
     // Convert them to a JS Object
     const languages = jsYaml.load(response.data);
 
-    const languageColors = {};
-
-    // Filter only language colors from the whole file
+    // Add colors from Linguist only if they do not conflict with custom colors
     Object.keys(languages).forEach((lang) => {
-      languageColors[lang] = languages[lang].color;
-    });
-
-    // Read custom language colors from JSON file
-    const customLanguageColors = JSON.parse(
-      fs.readFileSync(CUSTOM_LANGS_FILEPATH, "utf8"),
-    );
-
-    // Merge custom colors with default colors
-    Object.keys(customLanguageColors).forEach((lang) => {
-      languageColors[lang] = customLanguageColors[lang];
+      if (!languageColors[lang]) {
+        languageColors[lang] = languages[lang].color;
+      }
     });
 
     // Write the merged language colors to the output file
@@ -36,4 +33,9 @@ axios
       LANGS_FILEPATH,
       JSON.stringify(languageColors, null, "    "),
     );
+
+    console.log("Language colors have been written to", LANGS_FILEPATH);
+  })
+  .catch((error) => {
+    console.error("Error fetching or processing language colors:", error);
   });
